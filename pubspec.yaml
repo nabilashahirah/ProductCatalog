@@ -34,6 +34,8 @@ dependencies:
   provider: ^6.1.5+1
   http: ^1.6.0
   cached_network_image: ^3.4.1
+  google_fonts: ^6.2.1
+
 
 
   # The following adds the Cupertino Icons font to your application. #already put up :D
