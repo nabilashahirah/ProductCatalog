@@ -76,7 +76,7 @@ class MyApp extends StatelessWidget {
           ),
           chipTheme: ChipThemeData(
             backgroundColor: Colors.white,
-            selectedColor: scheme.primary,
+            selectedColor: const Color.fromARGB(255, 216, 164, 108),
             labelStyle: textTheme.labelLarge?.copyWith(
               color: scheme.onSurface,
               fontWeight: FontWeight.w600,
