@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:productcatalog/data/app_exception.dart';
-import 'package:productcatalog/data/models/product.dart';
 import 'package:productcatalog/presentation/viewmodels/product_view_model.dart';
 import 'package:productcatalog/presentation/views/product_detail_screen.dart';
 import 'package:productcatalog/presentation/widgets/product_card.dart';
@@ -23,7 +22,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   void initState() {
     super.initState();
-
     Future.microtask(() {
       if (mounted) {
         final viewModel = context.read<ProductViewModel>();
@@ -31,7 +29,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
         viewModel.fetchCategories();
       }
     });
-
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
@@ -71,18 +68,29 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
   }
 
+  void _openFilterSheet(ProductViewModel viewModel) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _FilterSheet(viewModel: viewModel),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ProductViewModel>();
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Catalog'),
-      ),
+      appBar: AppBar(title: const Text('Product Catalog')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
               controller: _searchController,
               onChanged: viewModel.onSearchChanged,
@@ -98,40 +106,28 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         },
                       )
                     : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
           ),
-          if (viewModel.categories.isNotEmpty && viewModel.searchQuery.isEmpty)
-            SizedBox(
-              height: 56,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                itemCount: viewModel.categories.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: FilterChip(
-                        label: const Text('All'),
-                        selected: viewModel.selectedCategory == null,
-                        onSelected: (_) => viewModel.selectCategory(null),
-                      ),
-                    );
-                  }
-                  final Category category = viewModel.categories[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      label: Text(category.name),
-                      selected: viewModel.selectedCategory == category.slug,
-                      onSelected: (_) => viewModel.selectCategory(category.slug),
+          if (viewModel.products.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Showing ${viewModel.filteredProducts.length} of ${viewModel.total}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurfaceVariant,
                     ),
-                  );
-                },
+                  ),
+                  const Spacer(),
+                  _FilterButton(
+                    badgeCount: viewModel.activeFilterCount,
+                    onTap: () => _openFilterSheet(viewModel),
+                  ),
+                ],
               ),
             ),
           Expanded(child: _buildContent(viewModel)),
@@ -141,9 +137,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildContent(ProductViewModel viewModel) {
-    if (viewModel.isLoading) {
-      return const LoadingView();
-    }
+    if (viewModel.isLoading) return const LoadingView();
 
     if (viewModel.errorMessage != null && viewModel.products.isEmpty) {
       return ErrorView(
@@ -153,9 +147,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    if (viewModel.isEmpty) {
-      return const EmptyView();
-    }
+    if (viewModel.isEmpty) return const EmptyView();
+    if (viewModel.isFilteredEmpty) return const EmptyView();
+
+    final visible = viewModel.filteredProducts;
 
     return RefreshIndicator(
       onRefresh: () => _onRefresh(viewModel),
@@ -174,21 +169,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final product = viewModel.products[index];
+                  final product = visible[index];
                   return ProductCard(
                     product: product,
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              ProductDetailScreen(product: product),
+                          builder: (_) => ProductDetailScreen(product: product),
                         ),
                       );
                     },
                   );
                 },
-                childCount: viewModel.products.length,
+                childCount: visible.length,
               ),
             ),
           ),
@@ -201,6 +195,244 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterButton extends StatelessWidget {
+  final int badgeCount;
+  final VoidCallback onTap;
+  const _FilterButton({required this.badgeCount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final active = badgeCount > 0;
+
+    return Material(
+      color: active ? scheme.primary : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: active ? scheme.primary : scheme.outlineVariant,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tune_rounded,
+                  size: 18, color: active ? Colors.white : scheme.onSurface),
+              const SizedBox(width: 6),
+              Text(
+                'Filter',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: active ? Colors.white : scheme.onSurface,
+                ),
+              ),
+              if (active) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$badgeCount',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterSheet extends StatefulWidget {
+  final ProductViewModel viewModel;
+  const _FilterSheet({required this.viewModel});
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late String? _draftCategory;
+  late double _draftRating;
+  late RangeValues _draftPrice;
+  late double _maxPrice;
+
+  @override
+  void initState() {
+    super.initState();
+    _draftCategory = widget.viewModel.selectedCategory;
+    _draftRating = widget.viewModel.minRating;
+    _maxPrice = widget.viewModel.maxLoadedPrice.ceilToDouble().clamp(50, 100000);
+    _draftPrice = widget.viewModel.priceRange ?? RangeValues(0, _maxPrice);
+  }
+
+  void _apply() {
+    final vm = widget.viewModel;
+    if (vm.selectedCategory != _draftCategory) {
+      vm.selectCategory(_draftCategory);
+    }
+    vm.setMinRating(_draftRating);
+    final isDefaultPrice =
+        _draftPrice.start == 0 && _draftPrice.end == _maxPrice;
+    vm.setPriceRange(isDefaultPrice ? null : _draftPrice);
+    Navigator.pop(context);
+  }
+
+  void _reset() {
+    setState(() {
+      _draftCategory = null;
+      _draftRating = 0;
+      _draftPrice = RangeValues(0, _maxPrice);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.tune_rounded, color: scheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Filters',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                    const Spacer(),
+                    TextButton(onPressed: _reset, child: const Text('Reset')),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  children: [
+                    const Text('Category',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('All'),
+                          selected: _draftCategory == null,
+                          onSelected: (_) => setState(() => _draftCategory = null),
+                        ),
+                        ...widget.viewModel.categories.map(
+                          (c) => ChoiceChip(
+                            label: Text(c.name),
+                            selected: _draftCategory == c.slug,
+                            onSelected: (_) =>
+                                setState(() => _draftCategory = c.slug),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Minimum rating',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          _draftRating == 0
+                              ? 'Any'
+                              : '${_draftRating.toStringAsFixed(1)} & up',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _draftRating,
+                      min: 0,
+                      max: 5,
+                      divisions: 10,
+                      onChanged: (v) => setState(() => _draftRating = v),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Price range',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('\$${_draftPrice.start.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('\$${_draftPrice.end.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    RangeSlider(
+                      values: _draftPrice,
+                      min: 0,
+                      max: _maxPrice,
+                      divisions: 20,
+                      onChanged: (values) =>
+                          setState(() => _draftPrice = values),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16, 8, 16, 16 + MediaQuery.paddingOf(context).bottom,
+                ),
+                child: FilledButton(
+                  onPressed: _apply,
+                  child: const Text('Show results'),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

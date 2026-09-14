@@ -22,6 +22,8 @@ class ProductViewModel extends ChangeNotifier {
   int _total = 0;
   String _searchQuery = '';
   String? _selectedCategory;
+  double _minRating = 0;
+  RangeValues? _priceRange;
   Timer? _debounceTimer;
   Future<void> Function()? _lastFailedAction;
 
@@ -35,10 +37,55 @@ class ProductViewModel extends ChangeNotifier {
   AppErrorKind? get errorKind => _errorKind;
   String? get paginationErrorMessage => _paginationErrorMessage;
   bool get hasMore => _hasMore;
+  int get total => _total;
   String get searchQuery => _searchQuery;
   String? get selectedCategory => _selectedCategory;
+  double get minRating => _minRating;
+  RangeValues? get priceRange => _priceRange;
+
+  List<Product> get filteredProducts {
+    if (_minRating == 0 && _priceRange == null) return _products;
+    return _products.where((p) {
+      if (p.rating < _minRating) return false;
+      if (_priceRange != null) {
+        if (p.price < _priceRange!.start) return false;
+        if (p.price > _priceRange!.end) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  double get maxLoadedPrice {
+    if (_products.isEmpty) return 100;
+    return _products.map((p) => p.price).reduce((a, b) => a > b ? a : b);
+  }
+
+  int get activeFilterCount {
+    var n = 0;
+    if (_selectedCategory != null) n++;
+    if (_minRating > 0) n++;
+    if (_priceRange != null) n++;
+    return n;
+  }
 
   bool get isEmpty => !_isLoading && _errorMessage == null && _products.isEmpty;
+
+  bool get isFilteredEmpty =>
+      !_isLoading &&
+      _errorMessage == null &&
+      _products.isNotEmpty &&
+      filteredProducts.isEmpty;
+
+  void setMinRating(double rating) {
+    if (_minRating == rating) return;
+    _minRating = rating;
+    notifyListeners();
+  }
+
+  void setPriceRange(RangeValues? range) {
+    _priceRange = range;
+    notifyListeners();
+  }
 
   void _setError(Object e) {
     if (e is AppException) {
