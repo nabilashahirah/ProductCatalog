@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:productcatalog/data/models/product.dart';
 import 'package:productcatalog/presentation/viewmodels/product_view_model.dart';
+import 'package:productcatalog/presentation/views/product_detail_screen.dart';
 import 'package:productcatalog/presentation/widgets/product_card.dart';
 import 'package:productcatalog/presentation/widgets/loading_view.dart';
 import 'package:productcatalog/presentation/widgets/error_view.dart';
@@ -23,7 +25,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     Future.microtask(() {
       if (mounted) {
-        context.read<ProductViewModel>().fetchProducts();
+        final viewModel = context.read<ProductViewModel>();
+        viewModel.fetchProducts();
+        viewModel.fetchCategories();
       }
     });
 
@@ -75,6 +79,36 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
           ),
+          if (viewModel.categories.isNotEmpty && viewModel.searchQuery.isEmpty)
+            SizedBox(
+              height: 56,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                itemCount: viewModel.categories.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: const Text('All'),
+                        selected: viewModel.selectedCategory == null,
+                        onSelected: (_) => viewModel.selectCategory(null),
+                      ),
+                    );
+                  }
+                  final Category category = viewModel.categories[index - 1];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(category.name),
+                      selected: viewModel.selectedCategory == category.slug,
+                      onSelected: (_) => viewModel.selectCategory(category.slug),
+                    ),
+                  );
+                },
+              ),
+            ),
           Expanded(child: _buildContent(viewModel)),
         ],
       ),
@@ -97,26 +131,33 @@ class _ProductListScreenState extends State<ProductListScreen> {
       return const EmptyView();
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: viewModel.products.length + (viewModel.hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == viewModel.products.length) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+    return RefreshIndicator(
+      onRefresh: viewModel.refreshProducts,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: viewModel.products.length + (viewModel.hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == viewModel.products.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final product = viewModel.products[index];
+          return ProductCard(
+            product: product,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(product: product),
+                ),
+              );
+            },
           );
-        }
-
-        final product = viewModel.products[index];
-        return ProductCard(
-          product: product,
-          onTap: () {
-            // detail screen next stage
-          },
-        );
-      },
+        },
+      ),
     );
   }
 }

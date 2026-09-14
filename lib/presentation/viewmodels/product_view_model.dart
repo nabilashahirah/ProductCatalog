@@ -18,12 +18,17 @@ class ProductViewModel extends ChangeNotifier {
   int _skip = 0;
   int _total = 0;
   String _searchQuery = '';
+  List<Category> _categories = [];
+  String? _selectedCategory;
+
   Timer? _debounceTimer;
   Future<void> Function()? _lastFailedAction;
 
   static const int _limit = 20;
 
   List<Product> get products => _products;
+  List<Category> get categories => _categories;
+  String? get selectedCategory => _selectedCategory;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
@@ -80,7 +85,9 @@ class ProductViewModel extends ChangeNotifier {
 
   void onSearchChanged(String query) {
     _searchQuery = query;
+    _selectedCategory = null;
     _debounceTimer?.cancel();
+
 
     if (query.isEmpty) {
       fetchProducts();
@@ -118,6 +125,57 @@ class ProductViewModel extends ChangeNotifier {
     if (action == null) return;
     _lastFailedAction = null;
     action();
+  }
+  Future<void> fetchCategories() async {
+    try {
+      _categories = await _repository.getCategories();
+      notifyListeners();
+    } catch (_) {
+      // Non-critical — filter row simply won't render.
+    }
+  }
+
+  Future<void> selectCategory(String? categorySlug) async {
+    if (_selectedCategory == categorySlug) return;
+    _selectedCategory = categorySlug;
+    _searchQuery = '';
+
+    if (categorySlug == null) {
+      await fetchProducts();
+    } else {
+      await _fetchProductsByCategory(categorySlug);
+    }
+  }
+
+  Future<void> _fetchProductsByCategory(String categorySlug) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _paginationErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _repository.getProductsByCategory(categorySlug);
+      _products = response.products;
+      _total = response.total;
+      _hasMore = false;
+      _lastFailedAction = null;
+    } catch (_) {
+      _errorMessage = 'Failed to load products. Please try again.';
+      _lastFailedAction = () => _fetchProductsByCategory(categorySlug);
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> refreshProducts() async {
+    if (_selectedCategory != null) {
+      await _fetchProductsByCategory(_selectedCategory!);
+    } else if (_searchQuery.isNotEmpty) {
+      await _searchProducts(_searchQuery);
+    } else {
+      await fetchProducts();
+    }
   }
 
   @override
