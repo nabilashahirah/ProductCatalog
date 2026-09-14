@@ -45,27 +45,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Future<void> _onRefresh(ProductViewModel viewModel) async {
-    final kind = await viewModel.tryRefresh();
-    if (kind == null || !mounted) return;
-    final message = switch (kind) {
-      AppErrorKind.network => 'No internet — showing cached results.',
-      AppErrorKind.timeout => 'Refresh timed out. Try again.',
-      AppErrorKind.server => 'Server unreachable. Try again.',
-      AppErrorKind.unknown => 'Couldn\'t refresh.',
-    };
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-          action: SnackBarAction(
-            label: 'Retry',
-            onPressed: () => _onRefresh(viewModel),
-          ),
-        ),
-      );
+    await viewModel.tryRefresh();
   }
 
   void _openFilterSheet(ProductViewModel viewModel) {
@@ -89,6 +69,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
       appBar: AppBar(title: const Text('Product Catalog')),
       body: Column(
         children: [
+          if (viewModel.bannerKind != null)
+            _OfflineBanner(
+              kind: viewModel.bannerKind!,
+              onRetry: () => _onRefresh(viewModel),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
@@ -195,6 +180,60 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
         ],
+      ),
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
+  final AppErrorKind kind;
+  final VoidCallback onRetry;
+  const _OfflineBanner({required this.kind, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final message = switch (kind) {
+      AppErrorKind.network => 'No internet connection',
+      AppErrorKind.timeout => 'Request timed out',
+      AppErrorKind.server => 'Server unreachable',
+      AppErrorKind.unknown => 'Connection issue',
+    };
+    return Material(
+      color: const Color(0xFFB8342A),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

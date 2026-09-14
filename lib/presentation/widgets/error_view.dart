@@ -30,58 +30,85 @@ class ErrorView extends StatelessWidget {
   String get _title {
     switch (kind) {
       case AppErrorKind.network:
-        return 'No internet connection';
+        return 'No Internet';
       case AppErrorKind.timeout:
-        return 'Request timed out';
+        return 'Request Timed Out';
       case AppErrorKind.server:
-        return 'Server unreachable';
+        return 'Server Unreachable';
       case AppErrorKind.unknown:
       case null:
-        return 'Something went wrong';
+        return 'Something Went Wrong';
+    }
+  }
+
+  String get _subtitle {
+    switch (kind) {
+      case AppErrorKind.network:
+        return 'No Internet connection found.\nPlease try again.';
+      case AppErrorKind.timeout:
+        return 'The request took too long.\nPlease try again.';
+      case AppErrorKind.server:
+        return 'We couldn\'t reach the server.\nPlease try again.';
+      case AppErrorKind.unknown:
+      case null:
+        return message;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: scheme.errorContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(_icon, size: 48, color: scheme.onErrorContainer),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(),
+          Icon(
+            _icon,
+            size: 72,
+            color: scheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            _title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
-            const SizedBox(height: 20),
-            Text(
-              _title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.4,
+              color: scheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: scheme.onSurfaceVariant,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try again'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: const Text('Try Again'),
             ),
-          ],
-        ),
+          ),
+          const Spacer(),
+        ],
       ),
     );
   }
