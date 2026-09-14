@@ -16,6 +16,7 @@ class ProductViewModel extends ChangeNotifier {
   bool _isLoadingMore = false;
   String? _errorMessage;
   AppErrorKind? _errorKind;
+  AppErrorKind? _bannerKind;
   String? _paginationErrorMessage;
   bool _hasMore = true;
   int _skip = 0;
@@ -35,6 +36,7 @@ class ProductViewModel extends ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
   AppErrorKind? get errorKind => _errorKind;
+  AppErrorKind? get bannerKind => _bannerKind;
   String? get paginationErrorMessage => _paginationErrorMessage;
   bool get hasMore => _hasMore;
   int get total => _total;
@@ -87,6 +89,11 @@ class ProductViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _onSuccessfulLoad() {
+    if (_bannerKind != null) _bannerKind = null;
+    if (_categories.isEmpty) fetchCategories();
+  }
+
   void _setError(Object e) {
     if (e is AppException) {
       _errorMessage = e.message;
@@ -111,6 +118,7 @@ class ProductViewModel extends ChangeNotifier {
       _total = response.total;
       _hasMore = _products.length < _total;
       _lastFailedAction = null;
+      _onSuccessfulLoad();
     } catch (e) {
       _setError(e);
       _lastFailedAction = fetchProducts;
@@ -132,6 +140,7 @@ class ProductViewModel extends ChangeNotifier {
       _products.addAll(response.products);
       _hasMore = _products.length < _total;
       _lastFailedAction = null;
+      _onSuccessfulLoad();
     } catch (e) {
       _skip -= _limit;
       _paginationErrorMessage = e is AppException && e.kind == AppErrorKind.network
@@ -178,6 +187,7 @@ class ProductViewModel extends ChangeNotifier {
       _total = response.total;
       _hasMore = false;
       _lastFailedAction = null;
+      _onSuccessfulLoad();
     } catch (e) {
       _setError(e);
       _lastFailedAction = () => _fetchProductsByCategory(categorySlug);
@@ -215,6 +225,7 @@ class ProductViewModel extends ChangeNotifier {
       _total = response.total;
       _hasMore = false;
       _lastFailedAction = null;
+      _onSuccessfulLoad();
     } catch (e) {
       _setError(e);
       _lastFailedAction = () => _searchProducts(query);
@@ -240,6 +251,7 @@ class ProductViewModel extends ChangeNotifier {
     if (kind != null && _products.isNotEmpty) {
       _errorMessage = null;
       _errorKind = null;
+      _bannerKind = kind;
       notifyListeners();
       return kind;
     }
