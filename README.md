@@ -93,11 +93,8 @@ I chose `GET /products/search?q=…` over client-side filtering.
 
 - Fake-repository unit tests — DI hooks are in place but tests still hit the live API.
 - Widget tests for the list and detail screens.
-- Dark mode — theme is defined for light mode only.
 - Multi-category filter — DummyJSON's category endpoint only accepts one slug; multi-select would degrade pagination cleanliness.
 
 ## AI usage disclosure
-
-The architecture, state management, features, and tests are my own work.
 
 I used AI (Claude) for research, guidance, and a second opinion during development, particularly when exploring edge cases and UI/UX considerations. The architecture, implementation, features, and tests were developed by me, and I made the final decisions on what to implement.
