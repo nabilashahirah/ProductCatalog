@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:productcatalog/presentation/viewmodels/product_view_model.dart';
+import 'package:productcatalog/presentation/views/product_list_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ProductViewModel()..fetchProducts(),
+      create: (_) => ProductViewModel(),
       child: MaterialApp(
         title: 'Product Catalog',
         debugShowCheckedModeBanner: false,
@@ -20,22 +21,7 @@ class MyApp extends StatelessWidget {
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
         ),
-        home: Scaffold(
-          appBar: AppBar(title: const Text('Product Catalog')),
-          body: Consumer<ProductViewModel>(
-            builder: (context, vm, _) {
-              if (vm.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (vm.errorMessage != null) {
-                return Center(child: Text(vm.errorMessage!));
-              }
-              return Center(
-                child: Text('Loaded ${vm.products.length} products'),
-              );
-            },
-          ),
-        ),
+        home: const ProductListScreen(),
       ),
     );
   }
