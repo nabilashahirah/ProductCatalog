@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:productcatalog/data/app_exception.dart';
 import 'package:productcatalog/data/models/product.dart';
 import 'package:productcatalog/presentation/viewmodels/product_view_model.dart';
 import 'package:productcatalog/presentation/views/product_detail_screen.dart';
@@ -44,6 +45,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh(ProductViewModel viewModel) async {
+    final kind = await viewModel.tryRefresh();
+    if (kind == null || !mounted) return;
+    final message = switch (kind) {
+      AppErrorKind.network => 'No internet — showing cached results.',
+      AppErrorKind.timeout => 'Refresh timed out. Try again.',
+      AppErrorKind.server => 'Server unreachable. Try again.',
+      AppErrorKind.unknown => 'Couldn\'t refresh.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _onRefresh(viewModel),
+          ),
+        ),
+      );
   }
 
   @override
@@ -123,6 +148,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     if (viewModel.errorMessage != null && viewModel.products.isEmpty) {
       return ErrorView(
         message: viewModel.errorMessage!,
+        kind: viewModel.errorKind,
         onRetry: viewModel.retry,
       );
     }
@@ -132,7 +158,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: viewModel.refreshProducts,
+      onRefresh: () => _onRefresh(viewModel),
       child: CustomScrollView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
