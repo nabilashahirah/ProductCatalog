@@ -97,4 +97,7 @@ I chose `GET /products/search?q=…` over client-side filtering.
 
 ## AI usage disclosure
 
-I used AI (Claude) for research, guidance, and a second opinion during development, particularly when exploring edge cases and UI/UX considerations. The architecture, implementation, features, and tests were developed by me, and I made the final decisions on what to implement.
+## AI usage disclosure
+
+I used AI (Claude) for research, guidance, and a second opinion during development, particularly when exploring edge cases and UI/UX considerations. I made the final decisions on what to implement and reviewed and understood the suggestions before applying them.
+
