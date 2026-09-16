@@ -97,7 +97,10 @@ I chose `GET /products/search?q=…` over client-side filtering.
 
 ## AI usage disclosure
 
-## AI usage disclosure
+I used AI (Claude) during development for:
+- **Research & guidance** - sanity-checking approach on edge cases (offline pull-to-refresh vs cached fallback, pagination failure UX)
+- **Second opinion** - reviewing architectural tradeoffs I had already leaned toward (server-side vs client-side search, when to keep list vs show error screen)
+- **Debugging** - e.g. narrowing down a null/type issue in the pagination `skip` calculation faster than tracing manually
 
-I used AI (Claude) for research, guidance, and a second opinion during development, particularly when exploring edge cases and UI/UX considerations. I made the final decisions on what to implement and reviewed and understood the suggestions before applying them.
+Architecture, layering, feature scope, and all final implementation choices are my own, AI was consulted to validate decisions I had already made, not to generate them. Project structure, file organization, and the debounce implementation were written from scratch based on my own design. I read and understood every suggestion before applying it.
 
